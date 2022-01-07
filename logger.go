@@ -43,17 +43,24 @@ type ProgressLogger struct {
 	currentLine int
 }
 
-func New(out io.Writer) *ProgressLogger {
+func New(out io.Writer, formatters ...Formatter) *ProgressLogger {
 	l := &ProgressLogger{
-		Format: PlainFormatter(),
-		out:    out,
+		out: out,
+	}
+
+	if len(formatters) == 0 {
+		l.Format = PlainFormatter()
+	} else if len(formatters) == 1 {
+		l.Format = formatters[0]
+	} else {
+		l.Format = Formatters(formatters...)
 	}
 
 	l.out.Write(ansi.HideCursor.Write())
 	return l
 }
 
-var Std = New(os.Stderr)
+var std = New(os.Stderr)
 
 func (l *ProgressLogger) moveto(line int) {
 	if l.currentLine < line {
@@ -88,7 +95,7 @@ func (l *ProgressLogger) nextLine() (line int) {
 }
 
 func Printf(format string, v ...interface{}) {
-	Std.Printf(format, v...)
+	std.Printf(format, v...)
 }
 
 func (l *ProgressLogger) Printf(format string, v ...interface{}) {
@@ -96,7 +103,7 @@ func (l *ProgressLogger) Printf(format string, v ...interface{}) {
 }
 
 func Failf(format string, v ...interface{}) {
-	Std.Failf(format, v...)
+	std.Failf(format, v...)
 }
 
 func (l *ProgressLogger) Failf(format string, v ...interface{}) {
@@ -104,7 +111,7 @@ func (l *ProgressLogger) Failf(format string, v ...interface{}) {
 }
 
 func Successf(format string, v ...interface{}) {
-	Std.Successf(format, v...)
+	std.Successf(format, v...)
 }
 
 func (l *ProgressLogger) Successf(format string, v ...interface{}) {
@@ -112,11 +119,11 @@ func (l *ProgressLogger) Successf(format string, v ...interface{}) {
 }
 
 func LineLogger() Logger {
-	return Std.LineLogger()
+	return std.LineLogger()
 }
 
 func Finish() {
-	Std.Finish()
+	std.Finish()
 }
 
 func (l *ProgressLogger) Finish() {

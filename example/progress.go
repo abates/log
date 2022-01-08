@@ -37,5 +37,4 @@ func main() {
 	log.Printf("Six")
 	time.Sleep(time.Second)
 	wg.Wait()
-	log.Finish()
 }

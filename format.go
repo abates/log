@@ -30,7 +30,11 @@ func ColorFormatter() Formatter {
 		case SuccessMessage:
 			message = ansi.Green(message)
 		case FailMessage:
-			message = ansi.Red(message)
+			if index := strings.Index(message, ":"); index > -1 && index < len(message)-1 {
+				message = message[0:index+1] + ansi.Red(message[index+1:])
+			} else {
+				message = ansi.Red(message)
+			}
 		}
 		return message
 	}

@@ -56,18 +56,19 @@ func New(out io.Writer, formatters ...Formatter) *ProgressLogger {
 		l.Format = Formatters(formatters...)
 	}
 
-	l.out.Write(ansi.HideCursor.Write())
 	return l
 }
 
 var std = New(os.Stderr)
 
 func (l *ProgressLogger) moveto(line int) {
+	l.out.Write(ansi.HideCursor.Write())
 	if l.currentLine < line {
 		l.out.Write(ansi.MoveDown(line - l.currentLine))
 	} else if l.currentLine > line {
 		l.out.Write(ansi.MoveUp(l.currentLine - line))
 	}
+	l.currentLine = line
 }
 
 func (l *ProgressLogger) printf(line int, mt MessageType, format string, v ...interface{}) {
@@ -79,6 +80,8 @@ func (l *ProgressLogger) printf(line int, mt MessageType, format string, v ...in
 	l.out.Write([]byte("\n"))
 	l.currentLine = line + 1
 	l.Unlock()
+	l.moveto(l.lines)
+	l.out.Write(ansi.ShowCursor.Write())
 }
 
 func (l *ProgressLogger) nextLine() (line int) {
@@ -120,18 +123,6 @@ func (l *ProgressLogger) Successf(format string, v ...interface{}) {
 
 func LineLogger() Logger {
 	return std.LineLogger()
-}
-
-func Finish() {
-	std.Finish()
-}
-
-func (l *ProgressLogger) Finish() {
-	if l.currentLine < l.lines {
-		l.out.Write(ansi.MoveDown(l.lines - l.currentLine - 1))
-	}
-	l.out.Write([]byte("\n"))
-	l.out.Write(ansi.ShowCursor.Write())
 }
 
 func (l *ProgressLogger) LineLogger() Logger {

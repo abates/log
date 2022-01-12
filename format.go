@@ -1,11 +1,8 @@
 package log
 
 import (
-	"bytes"
 	"fmt"
-	golog "log"
 	"strings"
-	"sync"
 
 	"github.com/abates/log/ansi"
 )
@@ -21,26 +18,40 @@ const (
 type Formatter func(mt MessageType, message string) string
 
 func PlainFormatter() Formatter {
-	return func(mt MessageType, message string) string { return message }
+	return func(mt MessageType, message string) string {
+		return message
+	}
 }
 
-func ColorFormatter() Formatter {
+func Indent(i int) Formatter {
+	indent := strings.Repeat(" ", i)
+	return func(mt MessageType, message string) string {
+		return fmt.Sprintf("%s%s", indent, message)
+	}
+}
+
+func Colorize() Formatter {
+	splitIndex := func(msg string) (string, string) {
+		if index := strings.Index(msg, ":"); index > -1 && index < len(msg)-1 {
+			return msg[0 : index+1], msg[index+1:]
+		}
+		return "", msg
+	}
+
 	return func(mt MessageType, message string) string {
 		switch mt {
 		case SuccessMessage:
-			message = ansi.Green(message)
+			bef, aft := splitIndex(message)
+			message = bef + ansi.Green(aft)
 		case FailMessage:
-			if index := strings.Index(message, ":"); index > -1 && index < len(message)-1 {
-				message = message[0:index+1] + ansi.Red(message[index+1:])
-			} else {
-				message = ansi.Red(message)
-			}
+			bef, aft := splitIndex(message)
+			message = bef + ansi.Red(aft)
 		}
 		return message
 	}
 }
 
-func SuccessFormatter() Formatter {
+func Annotate() Formatter {
 	return func(mt MessageType, message string) string {
 		switch mt {
 		case SuccessMessage:
@@ -54,32 +65,7 @@ func SuccessFormatter() Formatter {
 	}
 }
 
-const (
-	Ldate         = 1 << iota     // the date in the local time zone: 2009/01/23
-	Ltime                         // the time in the local time zone: 01:23:23
-	Lmicroseconds                 // microsecond resolution: 01:23:23.123123.  assumes Ltime.
-	Llongfile                     // full file name and line number: /a/b/c/d.go:23
-	Lshortfile                    // final file name element and line number: d.go:23. overrides Llongfile
-	LUTC                          // if Ldate or Ltime is set, use UTC rather than the local time zone
-	Lmsgprefix                    // move the "prefix" from the beginning of the line to before the message
-	LstdFlags     = Ldate | Ltime // initial values for the standard logger
-)
-
-func PrefixFormatter(prefix string, flag int) Formatter {
-	buf := &bytes.Buffer{}
-	mu := sync.Mutex{}
-	logger := golog.New(buf, prefix, flag)
-	return func(mt MessageType, message string) string {
-		mu.Lock()
-		logger.Print(message)
-		message = strings.TrimSpace(string(buf.Bytes()))
-		buf.Reset()
-		mu.Unlock()
-		return message
-	}
-}
-
-func Formatters(formatters ...Formatter) Formatter {
+func FormatChain(formatters ...Formatter) Formatter {
 	return func(mt MessageType, message string) string {
 		for i := len(formatters) - 1; i >= 0; i-- {
 			message = formatters[i](mt, message)

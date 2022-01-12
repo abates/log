@@ -2,7 +2,6 @@ package ansi
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type Sequence string
@@ -11,21 +10,22 @@ func (s Sequence) Write() []byte {
 	return []byte(s)
 }
 
-func (s Sequence) Format(v int) []byte {
-	if v < 0 {
-		return []byte(fmt.Sprintf(string(s), ""))
+func (s Sequence) Format(v interface{}) []byte {
+	if i, ok := v.(int); ok && i < 0 {
+		return []byte(s)
 	}
-	return []byte(fmt.Sprintf(string(s), strconv.Itoa(v)))
+	return []byte(fmt.Sprintf(string(s), v))
 }
 
 const (
 	CSI Sequence = "\033["
 
-	CPL        = CSI + "%sF"
-	CNL        = CSI + "%sE"
-	EL         = CSI + "%sK"
-	HideCursor = CSI + "?25l"
-	ShowCursor = CSI + "?25h"
+	IL         = CSI + "%dL"  // Insert Line
+	CPL        = CSI + "%dF"  // Cursor Previous Line
+	CNL        = CSI + "%dE"  // Cusor Next Line
+	EL         = CSI + "%dK"  // Erase Line
+	HideCursor = CSI + "?25l" // Hide Cursor
+	ShowCursor = CSI + "?25h" // Show Cursor
 )
 
 type Color func(string) string
@@ -45,6 +45,10 @@ func genColor(c int) Color {
 
 func ClearLine() []byte {
 	return EL.Format(2)
+}
+
+func InsertLine(num int) []byte {
+	return IL.Format(num)
 }
 
 func MoveDown(num int) []byte {

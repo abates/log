@@ -10,36 +10,41 @@ import (
 	"github.com/abates/log"
 )
 
-var logger *log.ProgressLogger
+var logger log.Logger
 
 var wg sync.WaitGroup
 
 func testLog(num int) {
-	ll := logger.LineLogger()
-	for i := 0; i < 25; i++ {
-		ll.Printf("LL%d: message %d", num, i)
-		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
-	}
-	if num%2 == 0 {
-		ll.Successf("LL%d Succeeded!", num)
-	} else {
-		ll.Failf("LL%d Failed!", num)
-	}
-	wg.Done()
+	wg.Add(1)
+	ll := logger.Printf("LL%d", num)
+	formatter := ll.Formatter()
+	ll.SetFormatter(log.FormatChain(log.Indent(5), ll.Formatter()))
+	go func(num int) {
+		for i := 0; i < rand.Intn(12); i++ {
+			ll.Printf("LL%d: message %d", num, i)
+			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+		}
+		ll.SetFormatter(formatter)
+		if num%2 == 0 {
+			ll.Setf(log.SuccessMessage, "LL%d: Succeeded", num)
+		} else {
+			ll.Setf(log.FailMessage, "LL%d: Failed", num)
+		}
+		wg.Done()
+	}(num)
 }
 
 func main() {
-	logger = log.New(os.Stderr, log.SuccessFormatter(), log.PrefixFormatter("", log.LstdFlags), log.ColorFormatter())
+	logger = log.New(os.Stderr, log.Annotate(), log.Colorize())
 
-	wg.Add(3)
 	logger.Printf("One")
-	go testLog(1)
+	testLog(1)
 
 	logger.Printf("Two")
-	go testLog(2)
+	testLog(2)
 
 	logger.Printf("Three")
-	go testLog(3)
+	testLog(3)
 	time.Sleep(time.Second)
 	logger.Printf("Four")
 	time.Sleep(time.Second)
